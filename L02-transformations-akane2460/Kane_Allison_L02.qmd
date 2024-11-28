@@ -1,0 +1,485 @@
+---
+title: "L02 Data Transformation"
+subtitle: "Data Science 1 with R (STAT 301-1)"
+author: "Allison Kane"
+
+format:
+  html:
+    toc: true
+    embed-resources: true
+    code-fold: show
+    link-external-newwindow: true
+
+execute:
+  warning: false
+  
+from: markdown+emoji 
+---
+
+::: {.callout-tip icon=false}
+
+## Github Repo Link
+
+[Allison Kane Github Repo Link](https://github.com/stat301-1-2023-fall/L02-transformations-akane2460.git)
+
+:::
+
+## Overview
+
+The goal of this lab is to start building the skills to transform data using the `dplyr` package in R ([dplyr reference page](http://dplyr.tidyverse.org/reference/index.html)). Students will also continue to develop the knowledge and skills needed to effectively access and utilize R documentation.
+
+## Load packages
+
+You should always begin by loading all necessary packages towards the beginning of your document.
+
+```{r}
+#| label: load-pkgs
+
+# Loading package(s)
+library(tidyverse)
+library(skimr)
+library(knitr)
+
+```
+
+
+## Datasets 
+
+This lab utilizes the `college_rankings` dataset. This data was obtained from [Times Higher Education](https://www.timeshighereducation.com/rankings/united-states/2022#!/length/-1/sort_by/rank/sort_order/asc/cols/scores) and [College Scorecard](https://collegescorecard.ed.gov/data). 
+
+```{r}
+#| label: load-data
+
+# Load data
+college_rankings <- read_csv("data/college_rankings.csv")
+college_rankings_codebook <- read_csv("data/college_rankings_codebook.csv")
+tinder_data <- read_csv("data/tinder_data.csv")
+
+```
+
+## Exercises
+
+### Exercise 1 
+
+Using a single pipeline operator ( `|>` or `%>%` ), find all colleges that:
+
+a. Had a tuition greater than $50,000
+b. Are located in Illinois and ranked in the top 50
+c. have a median ACT score greater than 32 or mean SAT score greater than 1430
+d. have a median ACT score greater than 32 or mean SAT score greater than 1430 AND are ranked in the top 50
+
+::: {.callout-tip icon="false"}
+## Solution
+
+```{r}
+#| label: ex 1
+
+# a
+college_rankings |> 
+  filter(tuition_fees >= 50000)
+
+# b
+college_rankings |> 
+  filter(state_abbr == "IL" & rank_2023 <= 50)
+
+# c
+college_rankings |> 
+  filter(act_median > 32 | sat_avg > 1430)
+
+# d
+college_rankings |> 
+  filter(act_median > 32 & rank_2023 <= 50 | sat_avg > 1430 & rank_2023 <= 50)
+```
+
+
+:::
+
+### Exercise 2
+
+Find the colleges ranked 2, 3, and 4 in 3 different ways:
+
+ - using the "or" operator
+ - using `%in%`
+ - using `between()`
+
+::: {.callout-tip icon="false"}
+## Solution
+
+```{r}
+#| label: ex 2
+
+# or operator
+college_rankings |> 
+  filter(rank_2023 == 2 | rank_2023 == 3 | rank_2023 == 4)
+
+# %in% 
+college_rankings |> 
+  filter(rank_2023 %in% c(2, 3, 4))
+
+# between() 
+college_rankings |> 
+  filter(between(rank_2023, 2, 4))
+```
+
+
+:::
+
+### Exercise 3
+
+Was a college from every state ranked in this data frame?
+
+::: {.callout-tip icon="false"}
+## Solution
+
+```{r}
+#| label: ex 3
+
+# distinct()
+college_rankings |> 
+  distinct(state_abbr)
+
+```
+Yes a college from every state was represented.
+
+:::
+
+### Exercise 4
+
+a) Arrange the data to find the most expensive colleges
+
+b) Use the slice function to select the 5 most expensive colleges
+
+::: {.callout-tip icon="false"}
+## Solution
+
+```{r}
+#| label: ex 4
+
+college_rankings |> 
+  arrange(desc(tuition_fees)) |> 
+  slice_head(n = 5)
+
+```
+
+
+:::
+
+### Exercise 5
+
+Create a variable called `avg_financial_aid` which is calculated as the cost of attendance (tuition, fees, room and board) minus the average net price. **ONLY** include the institution and relevant variables in the printed output.
+
+::: {.callout-tip icon="false"}
+## Solution
+
+```{r}
+#| label: ex 5
+
+college_rankings |> 
+  mutate(
+    avg_financial_aid = tuition_fees + room_board - avg_net_price) |> 
+    select(institution, tuition_fees, room_board, avg_financial_aid)
+
+```
+
+
+:::
+
+### Exercise 6
+
+What happens if you specify the name of the same variable multiple times in a `select()` call?
+
+::: {.callout-tip icon="false"}
+## Solution
+
+If you specify the name of the same variable multiple times in a select() call it does not change the output.
+
+:::
+
+### Exercise 7
+
+Use the following vector in conjunction with `any_of()` to select the specified variables from the data frame.
+
+```{r}
+#| label: ex-7-vars
+
+# list of variables
+variables <- c("institution", "state", "rank_2023", "overall_score")
+
+```
+
+::: {.callout-tip icon="false"}
+## Solution
+
+```{r}
+#| label: ex 7
+
+# selecting for any_of()
+college_rankings |> 
+  select(any_of(variables))
+```
+
+
+:::
+
+### Exercise 8
+
+Use the `contains()` function to select all scores (overall, resources, engagement, outcomes, environment) and the institution from the data frame.
+
+::: {.callout-tip icon="false"}
+## Solution
+
+```{r}
+#| label: ex 8
+
+college_rankings |> 
+  select("institution", contains("score"))
+
+```
+
+
+:::
+
+### Exercise 9
+
+Rename the variable `rank_2023` to `rank` and move that column directly after `institution` in the dataframe.
+
+::: {.callout-tip icon="false"}
+## Solution
+
+```{r}
+#| label: ex 9
+
+college_rankings |> 
+  relocate(rank_2023, .after = institution) |>
+    rename(rank = rank_2023) 
+
+```
+
+
+:::
+
+### Exercise 10
+
+Do public or private schools on average have a higher tuition, overall score, acceptance rate, and undergraduate enrollment? It would also be useful to have the count of the number of public and private schools in this summary.
+
+::: {.callout-tip icon="false"}
+## Solution
+```{r}
+#| label: ex 10
+
+private_college_rankings <- 
+  college_rankings |> 
+    filter(public == "private")
+
+public_college_rankings <- 
+  college_rankings |> 
+  filter(public == "public")
+
+skim_without_charts(private_college_rankings)
+
+# average tuition: 42060
+# overall score: 54.9
+# acceptance rate: 0.659
+# undergraduate enrollment: 3345
+# total schools: 454
+
+skim_without_charts(public_college_rankings)
+
+# average tuition: 23779
+# overall score: 47.5
+# acceptance rate: 0.776
+# undergraduate enrollment: 14494
+# total schools: 336
+```
+
+Private institutions have higher average tuition and higher overall score. Public institutions have higher average acceptance rate and undergraduate enrollment. There are more private institutions than public institutions. 
+
+:::
+
+
+### Exercise 11
+
+You have a hypothetical dataset, `data`, with numeric variables `x`, `y`, `z` and categorical variable `c`.
+
+What is wrong with the following code? Then fix it to accomplish the goal.
+
+a) You are interested in calculating the average of `x`, `y`, and `z`.
+
+```{r}
+#| eval: false
+
+# puesdo code
+data |> 
+  summarize(
+    mean = mean(x),
+    mean = mean(y),
+    mean = mean(z)
+  )
+```
+
+
+b) You are interested in calculating the average of `x` by `c` and arranging from high to low.
+
+```{r}
+#| eval: false
+
+# puesdo code
+data |> 
+  group_by(c) |> 
+  summarize(mean(x)) |> 
+  arrange(desc(x))
+```
+
+::: {.callout-tip icon="false"}
+## Solution
+
+```{r}
+#| label: ex 11
+#| eval: false
+
+# part a
+# fixed code
+data |> 
+  summarize(
+    x_mean = mean(x),
+    y_mean = mean(y),
+    z_mean = mean(z)
+  )
+
+# part b
+# fixed code
+data |>
+  group_by(c) |>
+  summarize(x_mean = mean(x)) |>
+  arrange(desc(x_mean))
+
+```
+
+In part A, the pseudocode is trying to calculate the individual averages of x, y 
+and z but assigns "mean" to multiple averages. To fix this, x, y and z averages 
+must be assigned to "x_mean", "y-mean" and "z-mean" respectively. 
+
+In part B, this code doesn't work because it does not assign the mean value of x 
+to anything within summarize. It also does not work because the arrange(desc(x)) 
+is trying to have the mean values arranged in descending order of the x values, 
+not the average of the x values
+
+:::
+
+
+### Exercise 12
+
+Use `count()` to find the number of institutions ranked within each state. Print the output with the state with the most institutions on top.
+
+::: {.callout-tip icon="false"}
+## Solution
+
+```{r}
+#| labe: ex 12
+college_rankings |>
+  group_by(state_abbr) |> 
+  count() |> 
+  arrange(desc(n))
+
+```
+
+
+:::
+
+## Case Study
+
+The dataset is stored in the `data` folder called `tinder_data`. A codebook, `tinder_data_codebook.csv`, provides a description of each of the variable names. This dataset was provided by [Swipestats.io](https://www.swipestats.io/).
+
+### Objective 1
+
+Determine the distribution of the percent of one message conversations.
+
+![Percent of 1 Message Conversations Histogram](plots/one_msg_histogram.png)
+
+![Percent of 1 Message Conversations Boxplot](plots/one_msg_boxplot.png)
+
+```{r}
+#| labeL: objective 1 summary stats
+
+# step 1: remove no conversation users
+tinder_data_clean <-
+  tinder_data |> 
+  filter(longest_convo_msgs != 0)
+
+# step 2: create a new variable to show percent of user conversations that
+# were 1 message long
+tinder_data_clean <-
+  tinder_data_clean |> 
+    mutate(
+      pct_one_msg = number_one_msg_conversations / number_conversations
+    )
+
+# step 3: summary stats
+skim_without_charts(tinder_data_clean$pct_one_msg)
+
+```
+
+
+For 1,176 active Tinder users, the median percent of 1 message conversations per user was approximately 30%. The distribution of percent of conversations lasting 1 message for these active users is skewed right. Users had percentage of conversations lasting 1 message ranging from 0 to 100%. Users with 100% of their conversations lasting 1 message appear to be outliers. This distribution examined the percent of individual user conversations that lasted one message *instead* of examining the percent of overall conversations that lasted 1 message because variations in individual activity needed to be accounted for. One user might have used Tinder very often and had a high percentage of their message activity being one message conversations. While another might have used Tinder infrequently, choosing to message very few people for longer durations. 
+
+
+### Objective 2 
+
+Determine who is most "popular/liked".
+
+
+
+
+
+::: {.callout-tip icon="false"}
+## Solution
+
+```{r}
+#| label: top 5 users (non normalized)
+tinder_data_clean <- 
+  tinder_data_clean |> 
+  filter(matches != 0) |> 
+  mutate(
+    ratio_matches_to_likes = matches / swipes_like
+  )
+
+top_matches <-
+  tinder_data_clean |> 
+  arrange(desc(matches)) |> 
+  slice_head(n = 5)
+
+top_matches <- 
+  top_matches |> 
+  select(user_id, user_gender, matches:swipes_pass, ratio_matches_to_likes)
+
+top_matches <- janitor::clean_names(top_matches, "title")
+
+kable(top_matches)
+```
+
+These "most popular" users do not account for the fact that different users might use the app differently. Some might not be super active on the app, but when they are they receive a lot of attention. Some of these users might have received the "most matches" because they simply sue the app more than others. Additionally, matches rely on both users liking each other. Some users might be very picky and pass on most people, despite receiving a lot of likes. 
+
+
+A way to account for this is examining the ratio of matches to likes sent. This would take into account different approaches to using the app (including different standards for likes and amounts of account activity). 
+
+```{r}
+#| label: top 5 users (normalized)
+top_matches_normalized <-
+  tinder_data_clean |> 
+  arrange(desc(ratio_matches_to_likes)) |> 
+  slice_head(n =5)
+
+top_matches_normalized <- 
+  top_matches_normalized |> 
+  select(user_id, user_gender, matches:swipes_pass, ratio_matches_to_likes)
+
+top_matches_normalized <- janitor::clean_names(top_matches_normalized, "title")
+
+kable(top_matches_normalized)
+```
+
+Looking at the two results, it is clear that using "matches" as a metric for most popular on the Tinder app is not accurate. When using matches as our criteria, only one of the top 5 "most popular" users receives a match back more than 50% of the time. Most of the other top users do not even receive a match back 10% of the time. These top 5 users might appear most popular because they use the app more often or tend to send likes more often than others do. 
+
+Looking at the normalized matches, we see that the ratio of matches to likes sent more accurately reflects whether a user is more popular on the Tinder app. All 5 of the "most popular" users receive a match back more than 75% of the time. These users have varying levels of activity, with some sending only a total of 33 likes and others a total of 19449 likes. Only one user is found in common for both criteria, with a match to like ratio of approximately .76 and total matches 14874. 
+
+:::
